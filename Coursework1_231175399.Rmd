@@ -1,0 +1,196 @@
+---
+title: "MTH6139 Time Series" 
+subtitle: "Coursework 1 - Co2 Time Series Analysis" 
+author: "Ananya Khole" 
+date: "20/03/26 Spring term" 
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: spacelab 
+    highlight: tango
+---
+ 
+```{r, echo=FALSE}
+# This code will display the QMUL logo at the top right of the page
+# Do not change this code
+htmltools::img(src = knitr::image_uri("images/QMlogo.png"),
+               alt = 'logo',
+               style = 'position:absolute; top:0; right:0; padding:10px; width:20%;')
+```
+## *CO2 Time Series* 
+
+### CO2 Introduction - the Why?
+
+This project analyses 468 monthly atmospheric concentrations of Co2 observations that are readily available in R, as observed at Mauna Loa, from 1959 to 1997. 
+
+The analysis aims to explore the **trend and seasonality** of the data by fitting a prophet forecasting model and generating 8 months of data beyond the dataset. In addition, by using linear regression, the analysis quantifies the rate of co2 growth over the 38 year period.
+
+```{r}
+# Using the default installation
+library(prophet)
+library(zoo)
+```
+
+
+### CO2 Analysis and Prophet
+
+The Co2 data has to be converted into a dataframe from a ts for prophet to use it. 
+
+```{r}
+# Convert co2 ts into a  dataframe using ds and y 
+#ds given as date column, adjusted using yearmon()
+#y given as data columnn i.e., CO2 values
+co2dataframe <- data.frame(
+    ds = zoo::as.Date(zoo::as.yearmon(time(co2))),
+    y = as.numeric(co2)
+)
+```
+
+
+### Observing Raw Data
+
+This allows us to graphically observe seasonal changes and the expected upward trend of the CO2 levels.
+
+```{r}
+plot(co2,
+     main = "Atmospheric Co2 1959-97",
+     ylab = "Co2 ppm",
+     xlab = "Year")
+```
+
+
+### Inspecting Raw Data
+
+We inspect the data for the start, end, frequency.
+
+```{r}
+start(co2)
+end(co2)
+frequency(co2)
+summary(co2)
+```
+
+
+### Analysis of Raw Data
+
+Based on the R summary, Co2 ppm range from 313.2 - 366.8ppm, with a mean of 337.1ppm. 
+The raw plot demonstrates a clear pattern in the data. We notice a strong upward trend with rising Co2 levels consistently. Alongside this, there exists a seasonal component with the trend line oscillating. 
+
+
+### Decomposition of Raw Data
+
+This decomposes the co2 ts into trend, seasonality and the remainder parts. This will allow us to analyse the impact of each individual component on the overall ts. 
+
+```{r}
+co2decomposed <- decompose(co2)
+plot(co2decomposed)
+```
+
+### Analysis of Decomposition
+
+The decomposition split the co2 ts into four parts - the **observed** panel shows the data rising consistently from 320ppm to 380ppm over the time period. 
+
+The **trend** section mirrors the same. 
+
+**Seasonality** panel is observed to oscillate consistently from -3 to 2 with little to no disruptions in this pattern.
+
+The **remainder** component has a few random minor spikes. This is good because it means the decomposition has done a good job of picking the main data patterns.
+
+
+### Linear Regression
+
+```{r}
+#Linear regression model to co2 data
+co2regression <- lm(co2~time(co2))
+summary(co2regression)
+```
+
+
+### Analysis of Linear Regression
+
+The gradient implies co2 rises by 1.308ppm/year. Adjusted R square value of 0.9694, 96.95%, means the straight line fits the data very well. Here, that implies that time explains the trend very well and is statistically significant. 
+
+
+### Regression line over Raw Data
+
+```{r}
+plot(co2,
+     main = "Linear Co2 Concentration",
+     ylab = "Co2 ppm",
+     xlab = "Year")
+abline(co2regression, col="red")
+```
+
+
+### Fitting the Prophet Model
+
+With the data (date and numerical values) in the appropriate format, we can fit a prophet model to the Co2 ts.
+
+```{r}
+co2model <- prophet(co2dataframe)
+```
+
+
+### Forecasting
+
+Per guidance, we generate 8 months of future Co2 data and use the fitted model to forecast data beyond the dataset. 
+Recall, data observed till 1997.
+
+```{r}
+#Creating future dates for forecasting
+#We use 8 to indicat ethe number of periods ahead per insstructions
+co2future <- make_future_dataframe(co2model,periods=8,freq="month")
+
+#this generates our forecast using the co2model and co2future
+co2forecast <- predict(co2model, co2future)
+plot(co2model, co2forecast,
+     xlabel = "Year",
+     ylab = "CO2 ppm")
+```
+
+
+### Yearly Variations in Co2 levels
+
+Yearly variations which show that Co2 peaks in May, before falling till October before rising again. 
+These could, for instance, be attributed to plant growth / decomposition cycles. 
+
+```{r}
+prophet_plot_components(co2model, co2forecast)
+```
+
+
+
+## *Conclusions and Observations*
+
+The analysis of the Mauna Loa dataset demonstrated two patterns in the data - a consistent upward trend and a strong annual seasonality.
+
+By observing the linear regression, we see that Co2 levels rose at an average 1.308ppm/year over the 38 years. In addition, the R-squared 96.95% suggests that time explains any and all variations in the Co2. 
+
+By performing the decomposition, we were able to isolate and analyse the different components that built on the ts and their individual contributions. Most importantly, it clarified that trend and seasonality accounted for most data movement. 
+
+Prophet tied up are analysis successfully by generating an 8 month forecast with a similar upward trajectory as previously observed. It also recognised the seasonality we had seen throughout the 38 year period. 
+
+Overall, prophet was easy and effective in forecasting the time series' trend and seasonality. 
+
+
+
+## *Food for Thought* 
+
+### Co2 Levels V US Population
+
+As part of this project, I was keen to explore the correlation between the US population from 1959 - 1997 and the Co2 levels observed at Mauna Loa. 
+
+We observe that with rising global populations and consumerism, Co2 levels have naturally increased. I wished to inspect US populations to make both datasets geographically centred at the US. 
+
+The readily available US population data runs from 1790-1970. This coupled with a frequency of 0.1 would not have created a meaningful comparison against co2 levels. 
+
+Hence, regrettably, this has been excluded from the analysis. 
+
+
+
+## *References*
+
+- Datacamp course: <https://www.datacamp.com/courses/reporting-with-rmarkdown>
+- RStudio reference: <https://rmarkdown.rstudio.com/lesson-1.html>
+- More sophisticated reference: <https://bookdown.org/yihui/rmarkdown/>
